@@ -1,0 +1,69 @@
+use anyhow::Result;
+use directories::ProjectDirs;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum ChimeMode {
+    Notes,
+    File,
+    GrandfatherClock,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Config {
+    pub mode: ChimeMode,
+    pub notes: String,
+    pub file_path: Option<String>,
+    pub prelude_file_path: Option<String>,
+    pub strike_interval_ms: u64,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            mode: ChimeMode::Notes,
+            notes: "C E G C5".to_string(),
+            file_path: None,
+            prelude_file_path: None,
+            strike_interval_ms: 2000,
+        }
+    }
+}
+
+pub fn get_config_dir() -> Result<PathBuf> {
+    if let Some(proj_dirs) = ProjectDirs::from("com", "HourlyChime", "HourlyChime") {
+        let config_dir = proj_dirs.config_dir();
+        if !config_dir.exists() {
+            fs::create_dir_all(config_dir)?;
+        }
+        Ok(config_dir.to_path_buf())
+    } else {
+        anyhow::bail!("Could not determine config directory")
+    }
+}
+
+pub fn get_config_path() -> Result<PathBuf> {
+    Ok(get_config_dir()?.join("config.json"))
+}
+
+pub fn load_config() -> Result<Config> {
+    let config_path = get_config_path()?;
+    if config_path.exists() {
+        let content = fs::read_to_string(config_path)?;
+        let config: Config = serde_json::from_str(&content)?;
+        Ok(config)
+    } else {
+        let config = Config::default();
+        save_config(&config)?;
+        Ok(config)
+    }
+}
+
+pub fn save_config(config: &Config) -> Result<()> {
+    let config_path = get_config_path()?;
+    let content = serde_json::to_string_pretty(config)?;
+    fs::write(config_path, content)?;
+    Ok(())
+}
