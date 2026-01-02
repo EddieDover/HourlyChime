@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="console-application">
+  <id>dev.eddiedover.hourly_chime</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0</project_license>
+  <name>Hourly Chime</name>
+  <summary>Plays an hourly chime as notes, an audio file, or multiple files like a grandfather clock</summary>
+  <description>
+    <p>
+      Hourly Chime is a utility that plays audio notifications on the hour.
+      It can play musical notes, audio files, or even simulate a grandfather clock with multiple chime files.
+    </p>
+  </description>
+  <developer_name>Your Name</developer_name>
+  <url type="homepage">https://github.com/EddieDover/HourlyChime</url>
+  <provides>
+    <binary>hourly_chime</binary>
+  </provides>
+  <releases>
+    <release version="0.1.0" date="2025-01-02"/>
+  </releases>
+</component>
