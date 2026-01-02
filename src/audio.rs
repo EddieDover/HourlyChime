@@ -15,7 +15,7 @@ pub fn play_chime(config: &Config) -> Result<()> {
 
     match config.mode {
         ChimeMode::Notes => play_notes(&sink, config),
-        ChimeMode::File => play_file(&sink, &config.file_path),
+        ChimeMode::File => play_file(&sink, &config.audio_file_path),
         ChimeMode::GrandfatherClock => play_grandfather_clock(&sink, config),
     }?;
 
@@ -115,7 +115,7 @@ fn play_grandfather_clock(sink: &Sink, config: &Config) -> Result<()> {
     }
 
     // 2. Play Strikes
-    if let Some(path_str) = &config.file_path {
+    if let Some(path_str) = &config.strike_file_path {
         let now = Local::now();
         let (_is_pm, hour_12) = now.hour12();
         // For testing purposes, if hour is 0 (midnight/noon), treat as 12

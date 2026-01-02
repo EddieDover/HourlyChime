@@ -20,7 +20,8 @@ pub fn run() -> eframe::Result<()> {
 
 enum FileType {
     Prelude,
-    Main,
+    Audio,
+    Strike,
 }
 
 struct SettingsApp {
@@ -49,7 +50,8 @@ impl eframe::App for SettingsApp {
         while let Ok((ftype, path)) = self.rx.try_recv() {
             match ftype {
                 FileType::Prelude => self.config.prelude_file_path = Some(path),
-                FileType::Main => self.config.file_path = Some(path),
+                FileType::Audio => self.config.audio_file_path = Some(path),
+                FileType::Strike => self.config.strike_file_path = Some(path),
             }
         }
 
@@ -76,44 +78,17 @@ impl eframe::App for SettingsApp {
                     ui.add_space(5.0);
                     ui.label("Playback Speed:");
                     ui.add(egui::Slider::new(&mut self.config.note_speed, 0.1..=5.0).text("x"));
-                }
-                ChimeMode::File | ChimeMode::GrandfatherClock => {
-                    if self.config.mode == ChimeMode::GrandfatherClock {
-                        ui.label("Grandfather Clock Mode:");
-                        ui.small("Plays the prelude (optional), then the strike file X times.");
-                        
-                        ui.add_space(5.0);
-                        ui.label("Prelude File (Optional):");
-                        ui.horizontal(|ui| {
-                            let mut path_display = self.config.prelude_file_path.clone().unwrap_or_default();
-                            ui.text_edit_singleline(&mut path_display);
-                            
-                            if ui.button("Browse...").clicked() {
-                                let tx = self.tx.clone();
-                                tokio::spawn(async move {
-                                    if let Some(file) = AsyncFileDialog::new()
-                                        .add_filter("Audio", &["mp3", "wav", "ogg"])
-                                        .pick_file()
-                                        .await 
-                                    {
-                                        let _ = tx.send((FileType::Prelude, file.path().to_string_lossy().to_string()));
-                                    }
-                                });
-                            }
-                        });
-                        
-                        ui.add_space(5.0);
-                        ui.label("Strike Interval (ms):");
-                        ui.add(egui::DragValue::new(&mut self.config.strike_interval_ms).range(100..=10000));
-                        ui.add_space(5.0);
-                        
-                        ui.label("Strike File Path:");
-                    } else {
-                        ui.label("Audio File Path:");
-                    }
 
+                    ui.add_space(10.0);
+                    if ui.button("Reset Defaults").clicked() {
+                        self.config.notes = "C E G C5".to_string();
+                        self.config.note_speed = 1.0;
+                    }
+                }
+                ChimeMode::File => {
+                    ui.label("Audio File Path:");
                     ui.horizontal(|ui| {
-                        let mut path_display = self.config.file_path.clone().unwrap_or_default();
+                        let mut path_display = self.config.audio_file_path.clone().unwrap_or_default();
                         ui.text_edit_singleline(&mut path_display); // Read-only-ish display
                         
                         if ui.button("Browse...").clicked() {
@@ -124,13 +99,80 @@ impl eframe::App for SettingsApp {
                                     .pick_file()
                                     .await 
                                 {
-                                    let _ = tx.send((FileType::Main, file.path().to_string_lossy().to_string()));
+                                    let _ = tx.send((FileType::Audio, file.path().to_string_lossy().to_string()));
                                 }
                             });
                         }
                     });
-                    if let Some(path) = &self.config.file_path {
+                    if let Some(path) = &self.config.audio_file_path {
                         ui.label(format!("Selected: {}", path));
+                    }
+
+                    ui.add_space(10.0);
+                    if ui.button("Reset Defaults").clicked() {
+                        if let Ok((chime_path, _)) = config::ensure_assets() {
+                            self.config.audio_file_path = Some(chime_path.to_string_lossy().to_string());
+                        }
+                    }
+                }
+                ChimeMode::GrandfatherClock => {
+                    ui.label("Grandfather Clock Mode:");
+                    ui.small("Plays the prelude (optional), then the strike file X times.");
+                    
+                    ui.add_space(5.0);
+                    ui.label("Prelude File (Optional):");
+                    ui.horizontal(|ui| {
+                        let mut path_display = self.config.prelude_file_path.clone().unwrap_or_default();
+                        ui.text_edit_singleline(&mut path_display);
+                        
+                        if ui.button("Browse...").clicked() {
+                            let tx = self.tx.clone();
+                            tokio::spawn(async move {
+                                if let Some(file) = AsyncFileDialog::new()
+                                    .add_filter("Audio", &["mp3", "wav", "ogg"])
+                                    .pick_file()
+                                    .await 
+                                {
+                                    let _ = tx.send((FileType::Prelude, file.path().to_string_lossy().to_string()));
+                                }
+                            });
+                        }
+                    });
+                    
+                    ui.add_space(5.0);
+                    ui.label("Strike Interval (ms):");
+                    ui.add(egui::DragValue::new(&mut self.config.strike_interval_ms).range(100..=10000));
+                    ui.add_space(5.0);
+                    
+                    ui.label("Strike File Path:");
+                    ui.horizontal(|ui| {
+                        let mut path_display = self.config.strike_file_path.clone().unwrap_or_default();
+                        ui.text_edit_singleline(&mut path_display); // Read-only-ish display
+                        
+                        if ui.button("Browse...").clicked() {
+                            let tx = self.tx.clone();
+                            tokio::spawn(async move {
+                                if let Some(file) = AsyncFileDialog::new()
+                                    .add_filter("Audio", &["mp3", "wav", "ogg"])
+                                    .pick_file()
+                                    .await 
+                                {
+                                    let _ = tx.send((FileType::Strike, file.path().to_string_lossy().to_string()));
+                                }
+                            });
+                        }
+                    });
+                    if let Some(path) = &self.config.strike_file_path {
+                        ui.label(format!("Selected: {}", path));
+                    }
+
+                    ui.add_space(10.0);
+                    if ui.button("Reset Defaults").clicked() {
+                        if let Ok((chime_path, prelude_path)) = config::ensure_assets() {
+                            self.config.prelude_file_path = Some(prelude_path.to_string_lossy().to_string());
+                            self.config.strike_file_path = Some(chime_path.to_string_lossy().to_string());
+                        }
+                        self.config.strike_interval_ms = 2000;
                     }
                 }
             }
