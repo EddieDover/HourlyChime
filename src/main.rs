@@ -21,11 +21,18 @@ fn main() -> Result<()> {
 
     // Check for command line arguments to see if we should run GUI
     let args: Vec<String> = std::env::args().collect();
-    if args.len() > 1 && args[1] == "--settings" {
-        if let Err(e) = gui::run() {
-            eprintln!("GUI Error: {}", e);
+    if args.len() > 1 {
+        if args[1] == "--settings" {
+            if let Err(e) = gui::run() {
+                eprintln!("GUI Error: {}", e);
+            }
+            return Ok(());
+        } else if args[1] == "--help-window" {
+            if let Err(e) = gui::run_help() {
+                eprintln!("GUI Error: {}", e);
+            }
+            return Ok(());
         }
-        return Ok(());
     }
 
     let event_loop = EventLoopBuilder::<tray::TrayEvent>::with_user_event().build();
@@ -104,6 +111,14 @@ fn main() -> Result<()> {
                         match Command::new(exe_path).arg("--settings").spawn() {
                             Ok(_) => {},
                             Err(e) => eprintln!("Failed to spawn settings: {}", e),
+                        }
+                    }
+                }
+                tray::TrayEvent::Help => {
+                    if let Ok(exe_path) = std::env::current_exe() {
+                        match Command::new(exe_path).arg("--help-window").spawn() {
+                            Ok(_) => {},
+                            Err(e) => eprintln!("Failed to spawn help: {}", e),
                         }
                     }
                 }

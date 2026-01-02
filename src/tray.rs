@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 pub enum TrayEvent {
     Settings,
+    Help,
     Quit,
 }
 
@@ -57,6 +58,7 @@ mod linux {
 
         fn menu(&self) -> Vec<MenuItem<Self>> {
             let cb_settings = self.callback.clone();
+            let cb_help = self.callback.clone();
             let cb_quit = self.callback.clone();
 
             vec![
@@ -64,6 +66,13 @@ mod linux {
                     label: "Settings".into(),
                     activate: Box::new(move |_| {
                         cb_settings(TrayEvent::Settings);
+                    }),
+                    ..Default::default()
+                }.into(),
+                StandardItem {
+                    label: "Help".into(),
+                    activate: Box::new(move |_| {
+                        cb_help(TrayEvent::Help);
                     }),
                     ..Default::default()
                 }.into(),
@@ -100,8 +109,10 @@ mod other {
     pub fn setup_tray(callback: TrayCallback, icon_rgba: &[u8]) -> anyhow::Result<Box<dyn std::any::Any>> {
         let tray_menu = Menu::new();
         let config_i = MenuItem::new("Settings", true, None);
+        let help_i = MenuItem::new("Help", true, None);
         let quit_i = MenuItem::new("Quit", true, None);
         tray_menu.append(&config_i)?;
+        tray_menu.append(&help_i)?;
         tray_menu.append(&quit_i)?;
 
         let icon = Icon::from_rgba(icon_rgba.to_vec(), 32, 32)?;
@@ -114,6 +125,7 @@ mod other {
 
         // Spawn a thread to forward events
         let config_id = config_i.id().clone();
+        let help_id = help_i.id().clone();
         let quit_id = quit_i.id().clone();
         
         std::thread::spawn(move || {
@@ -121,6 +133,8 @@ mod other {
             while let Ok(event) = menu_channel.recv() {
                 if event.id == config_id {
                     callback(TrayEvent::Settings);
+                } else if event.id == help_id {
+                    callback(TrayEvent::Help);
                 } else if event.id == quit_id {
                     callback(TrayEvent::Quit);
                 }

@@ -18,6 +18,48 @@ pub fn run() -> eframe::Result<()> {
     )
 }
 
+pub fn run_help() -> eframe::Result<()> {
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([400.0, 300.0])
+            .with_resizable(false),
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "About Hourly Chime",
+        options,
+        Box::new(|_cc| Ok(Box::new(HelpApp::default()))),
+    )
+}
+
+#[derive(Default)]
+struct HelpApp {}
+
+impl eframe::App for HelpApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.heading("Hourly Chime");
+                ui.label("v1.0.0");
+                ui.label("Author: Eddie Dover");
+                ui.hyperlink("https://www.github.com/EddieDover/HourlyChime");
+            });
+            
+            ui.add_space(20.0);
+            ui.heading("Attributions");
+            ui.add_space(10.0);
+            
+            ui.strong("Images:");
+            ui.label("Grandfather Clock Icon - Iconic Panda - Flaticon");
+            
+            ui.add_space(10.0);
+            ui.strong("Sounds:");
+            ui.label("Default Prelude and Chime - Grandfather clock strikes ten - Pixabay");
+        });
+    }
+}
+
 enum FileType {
     Prelude,
     Audio,
@@ -120,10 +162,10 @@ impl eframe::App for SettingsApp {
                         }
 
                         ui.add_space(10.0);
-                        if ui.button("Reset Defaults").clicked() {
-                            if let Ok((chime_path, _)) = config::ensure_assets() {
-                                self.config.audio_file_path = Some(chime_path.to_string_lossy().to_string());
-                            }
+                        if ui.button("Reset Defaults").clicked() 
+                            && let Ok((chime_path, _)) = config::ensure_assets() 
+                        {
+                            self.config.audio_file_path = Some(chime_path.to_string_lossy().to_string());
                         }
                     }
                     ChimeMode::GrandfatherClock => {
