@@ -42,7 +42,7 @@ fn play_notes(sink: &Sink, notes: &str) -> Result<()> {
                 append_note(sink, current_freq, current_duration_units, base_duration_ms);
             }
 
-            if note.eq_ignore_ascii_case("X") {
+            if note.eq_ignore_ascii_case("X") || note.eq_ignore_ascii_case("Z") {
                 current_freq = 0.0;
                 current_duration_units = 1;
             } else {
