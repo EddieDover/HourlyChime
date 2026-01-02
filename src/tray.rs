@@ -76,6 +76,10 @@ mod linux {
                 }.into(),
             ]
         }
+
+        fn activate(&mut self, _x: i32, _y: i32) {
+            (self.callback)(TrayEvent::Settings);
+        }
     }
 
     pub fn setup_tray(callback: TrayCallback, icon_rgba: &[u8]) -> anyhow::Result<Box<dyn std::any::Any>> {
