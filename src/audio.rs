@@ -1,5 +1,6 @@
 use anyhow::Result;
 use chrono::{Local, Timelike};
+use rand::Rng;
 use rodio::{source::SineWave, Decoder, OutputStream, Sink, Source};
 use std::fs::File;
 use std::io::BufReader;
@@ -13,7 +14,7 @@ pub fn play_chime(config: &Config) -> Result<()> {
     let sink = Sink::try_new(&stream_handle)?;
 
     match config.mode {
-        ChimeMode::Notes => play_notes(&sink, &config.notes),
+        ChimeMode::Notes => play_notes(&sink, config),
         ChimeMode::File => play_file(&sink, &config.file_path),
         ChimeMode::GrandfatherClock => play_grandfather_clock(&sink, config),
     }?;
@@ -24,14 +25,14 @@ pub fn play_chime(config: &Config) -> Result<()> {
     Ok(())
 }
 
-fn play_notes(sink: &Sink, notes: &str) -> Result<()> {
-    // println!("Playing notes: {}", notes);
+fn play_notes(sink: &Sink, config: &Config) -> Result<()> {
+    // println!("Playing notes: {}", config.notes);
     
     let mut current_freq = 0.0;
     let mut current_duration_units = 0;
-    let base_duration_ms = 300;
+    let base_duration_ms = (300.0 / config.note_speed) as u64;
 
-    for note in notes.split_whitespace() {
+    for note in config.notes.split_whitespace() {
         if note == "-" {
             if current_duration_units > 0 {
                 current_duration_units += 1;
@@ -44,6 +45,14 @@ fn play_notes(sink: &Sink, notes: &str) -> Result<()> {
 
             if note.eq_ignore_ascii_case("X") || note.eq_ignore_ascii_case("Z") {
                 current_freq = 0.0;
+                current_duration_units = 1;
+            } else if note == "?" {
+                // Random note between C3 and C6
+                let mut rng = rand::rng();
+                // C3 is roughly -21 semitones from A4
+                // C6 is roughly +15 semitones from A4
+                let semitone_offset = rng.random_range(-21..=15);
+                current_freq = 440.0 * 2.0_f32.powf(semitone_offset as f32 / 12.0);
                 current_duration_units = 1;
             } else {
                 let freq = parse_note(note);

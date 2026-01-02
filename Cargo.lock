@@ -1822,6 +1822,7 @@ dependencies = [
  "directories",
  "eframe",
  "ksni",
+ "rand",
  "rfd",
  "rodio",
  "serde",

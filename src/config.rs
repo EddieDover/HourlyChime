@@ -15,6 +15,7 @@ pub enum ChimeMode {
 pub struct Config {
     pub mode: ChimeMode,
     pub notes: String,
+    pub note_speed: f32,
     pub file_path: Option<String>,
     pub prelude_file_path: Option<String>,
     pub strike_interval_ms: u64,
@@ -25,6 +26,7 @@ impl Default for Config {
         Self {
             mode: ChimeMode::Notes,
             notes: "C E G C5".to_string(),
+            note_speed: 1.0,
             file_path: None,
             prelude_file_path: None,
             strike_interval_ms: 2000,
