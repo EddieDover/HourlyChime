@@ -13,27 +13,6 @@ mod gui;
 mod tray;
 
 const ICON_RGBA: &[u8] = include_bytes!("../assets/images/icon.rgba");
-const CHIME_MP3: &[u8] = include_bytes!("../assets/sounds/gc-chime.mp3");
-const PRELUDE_MP3: &[u8] = include_bytes!("../assets/sounds/gc-prelude.mp3");
-
-fn ensure_assets(config_dir: &std::path::Path) -> Result<(std::path::PathBuf, std::path::PathBuf)> {
-    let sounds_dir = config_dir.join("sounds");
-    if !sounds_dir.exists() {
-        std::fs::create_dir_all(&sounds_dir)?;
-    }
-
-    let chime_path = sounds_dir.join("gc-chime.mp3");
-    if !chime_path.exists() {
-        std::fs::write(&chime_path, CHIME_MP3)?;
-    }
-
-    let prelude_path = sounds_dir.join("gc-prelude.mp3");
-    if !prelude_path.exists() {
-        std::fs::write(&prelude_path, PRELUDE_MP3)?;
-    }
-
-    Ok((chime_path, prelude_path))
-}
 
 fn main() -> Result<()> {
     // Initialize Tokio runtime
@@ -42,25 +21,35 @@ fn main() -> Result<()> {
 
     // Check for command line arguments to see if we should run GUI
     let args: Vec<String> = std::env::args().collect();
-    if args.len() > 1 && args[1] == "--settings" {
-        if let Err(e) = gui::run() {
-            eprintln!("GUI Error: {}", e);
+    if args.len() > 1 {
+        if args[1] == "--settings" {
+            if let Err(e) = gui::run() {
+                eprintln!("GUI Error: {}", e);
+            }
+            return Ok(());
+        } else if args[1] == "--help-window" {
+            if let Err(e) = gui::run_help() {
+                eprintln!("GUI Error: {}", e);
+            }
+            return Ok(());
         }
-        return Ok(());
     }
 
     let event_loop = EventLoopBuilder::<tray::TrayEvent>::with_user_event().build();
     let proxy = event_loop.create_proxy();
 
     // Ensure assets exist and update config if needed
-    let config_dir = config::get_config_dir()?;
-    let (chime_path, prelude_path) = ensure_assets(&config_dir)?;
+    let (chime_path, prelude_path) = config::ensure_assets()?;
 
     // Update config defaults if they are missing
     if let Ok(mut cfg) = config::load_config() {
         let mut changed = false;
-        if cfg.file_path.is_none() {
-            cfg.file_path = Some(chime_path.to_string_lossy().to_string());
+        if cfg.audio_file_path.is_none() {
+            cfg.audio_file_path = Some(chime_path.to_string_lossy().to_string());
+            changed = true;
+        }
+        if cfg.strike_file_path.is_none() {
+            cfg.strike_file_path = Some(chime_path.to_string_lossy().to_string());
             changed = true;
         }
         if cfg.prelude_file_path.is_none() {
@@ -122,6 +111,14 @@ fn main() -> Result<()> {
                         match Command::new(exe_path).arg("--settings").spawn() {
                             Ok(_) => {},
                             Err(e) => eprintln!("Failed to spawn settings: {}", e),
+                        }
+                    }
+                }
+                tray::TrayEvent::Help => {
+                    if let Ok(exe_path) = std::env::current_exe() {
+                        match Command::new(exe_path).arg("--help-window").spawn() {
+                            Ok(_) => {},
+                            Err(e) => eprintln!("Failed to spawn help: {}", e),
                         }
                     }
                 }

@@ -1,12 +1,13 @@
 use eframe::egui;
 use rfd::AsyncFileDialog;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::time::Instant;
 use crate::config::{self, ChimeMode, Config};
 
 pub fn run() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([400.0, 400.0])
+            .with_inner_size([400.0, 300.0])
             .with_resizable(true),
         ..Default::default()
     };
@@ -18,16 +19,62 @@ pub fn run() -> eframe::Result<()> {
     )
 }
 
+pub fn run_help() -> eframe::Result<()> {
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([400.0, 300.0])
+            .with_resizable(false),
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "About Hourly Chime",
+        options,
+        Box::new(|_cc| Ok(Box::new(HelpApp::default()))),
+    )
+}
+
+#[derive(Default)]
+struct HelpApp {}
+
+impl eframe::App for HelpApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.heading("Hourly Chime");
+                ui.label("v1.0.0");
+                ui.label("Author: Eddie Dover");
+                ui.hyperlink("https://www.github.com/EddieDover/HourlyChime");
+            });
+            
+            ui.add_space(20.0);
+            ui.heading("Attributions");
+            ui.add_space(10.0);
+            
+            ui.strong("Images:");
+            ui.label("Grandfather Clock Icon - Iconic Panda - Flaticon");
+            
+            ui.add_space(10.0);
+            ui.strong("Sounds:");
+            ui.label("Default Prelude and Chime - Grandfather clock strikes ten - Pixabay");
+        });
+    }
+}
+
 enum FileType {
     Prelude,
-    Main,
+    Audio,
+    Strike,
 }
 
 struct SettingsApp {
     config: Config,
     status_msg: Option<String>,
+    status_msg_time: Option<Instant>,
     rx: Receiver<(FileType, String)>,
     tx: Sender<(FileType, String)>,
+    last_mode: Option<ChimeMode>,
+    startup_frames: u8,
 }
 
 impl SettingsApp {
@@ -37,44 +84,104 @@ impl SettingsApp {
         Self {
             config,
             status_msg: None,
+            status_msg_time: None,
             rx,
             tx,
+            last_mode: None,
+            startup_frames: 3,
         }
     }
 }
 
 impl eframe::App for SettingsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let prev_config = self.config.clone();
+
         // Check for file dialog results
         while let Ok((ftype, path)) = self.rx.try_recv() {
             match ftype {
                 FileType::Prelude => self.config.prelude_file_path = Some(path),
-                FileType::Main => self.config.file_path = Some(path),
+                FileType::Audio => self.config.audio_file_path = Some(path),
+                FileType::Strike => self.config.strike_file_path = Some(path),
             }
         }
 
+        let mut mode_changed = false;
+        if self.last_mode != Some(self.config.mode.clone()) {
+            self.last_mode = Some(self.config.mode.clone());
+            mode_changed = true;
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Hourly Chime Settings");
-            ui.add_space(10.0);
+            let content_rect = ui.vertical(|ui| {
+                ui.heading("Hourly Chime Settings");
+                ui.add_space(10.0);
 
-            ui.label("Chime Mode:");
-            ui.horizontal(|ui| {
-                ui.radio_value(&mut self.config.mode, ChimeMode::Notes, "Notes");
-                ui.radio_value(&mut self.config.mode, ChimeMode::File, "Audio File");
-                ui.radio_value(&mut self.config.mode, ChimeMode::GrandfatherClock, "Grandfather Clock");
-            });
+                ui.label("Master Volume:");
+                ui.add(egui::Slider::new(&mut self.config.volume, 0.0..=1.0));
 
-            ui.add_space(10.0);
+                ui.add_space(10.0);
 
-            match self.config.mode {
-                ChimeMode::Notes => {
-                    ui.label("Notes (e.g., 'C E G C5'):");
-                    ui.text_edit_singleline(&mut self.config.notes);
-                    ui.small("Supported: A-G, #/b, Octave (e.g. C#5)");
-                    ui.small("Use '-' to hold previous note, 'X' for silence.");
-                }
-                ChimeMode::File | ChimeMode::GrandfatherClock => {
-                    if self.config.mode == ChimeMode::GrandfatherClock {
+                ui.label("Chime Mode:");
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut self.config.mode, ChimeMode::Notes, "Notes");
+                    ui.selectable_value(&mut self.config.mode, ChimeMode::File, "Audio File");
+                    ui.selectable_value(&mut self.config.mode, ChimeMode::GrandfatherClock, "Grandfather Clock");
+                });
+
+                ui.separator();
+                ui.add_space(10.0);
+
+                ui.add_space(10.0);
+
+                match self.config.mode {
+                    ChimeMode::Notes => {
+                        ui.label("Notes (e.g., 'C E G C5'):");
+                        ui.text_edit_singleline(&mut self.config.notes);
+                        ui.small("Supported: A-G, #/b, Octave (e.g. C#5)");
+                        ui.small("Use '-' to hold previous note, 'Z'/'X' for silence, '?' for random.");
+                        
+                        ui.add_space(5.0);
+                        ui.label("Playback Speed:");
+                        ui.add(egui::Slider::new(&mut self.config.note_speed, 0.1..=5.0).text("x"));
+
+                        ui.add_space(10.0);
+                        if ui.button("Reset Defaults").clicked() {
+                            self.config.notes = "C E G C5".to_string();
+                            self.config.note_speed = 1.0;
+                        }
+                    }
+                    ChimeMode::File => {
+                        ui.label("Audio File Path:");
+                        ui.horizontal(|ui| {
+                            let mut path_display = self.config.audio_file_path.clone().unwrap_or_default();
+                            ui.text_edit_singleline(&mut path_display); // Read-only-ish display
+                            
+                            if ui.button("Browse...").clicked() {
+                                let tx = self.tx.clone();
+                                tokio::spawn(async move {
+                                    if let Some(file) = AsyncFileDialog::new()
+                                        .add_filter("Audio", &["mp3", "wav", "ogg"])
+                                        .pick_file()
+                                        .await 
+                                    {
+                                        let _ = tx.send((FileType::Audio, file.path().to_string_lossy().to_string()));
+                                    }
+                                });
+                            }
+                        });
+                        if let Some(path) = &self.config.audio_file_path {
+                            ui.label(format!("Selected: {}", path));
+                        }
+
+                        ui.add_space(10.0);
+                        if ui.button("Reset Defaults").clicked() 
+                            && let Ok((chime_path, _)) = config::ensure_assets() 
+                        {
+                            self.config.audio_file_path = Some(chime_path.to_string_lossy().to_string());
+                        }
+                    }
+                    ChimeMode::GrandfatherClock => {
                         ui.label("Grandfather Clock Mode:");
                         ui.small("Plays the prelude (optional), then the strike file X times.");
                         
@@ -104,56 +211,93 @@ impl eframe::App for SettingsApp {
                         ui.add_space(5.0);
                         
                         ui.label("Strike File Path:");
-                    } else {
-                        ui.label("Audio File Path:");
-                    }
+                        ui.horizontal(|ui| {
+                            let mut path_display = self.config.strike_file_path.clone().unwrap_or_default();
+                            ui.text_edit_singleline(&mut path_display); // Read-only-ish display
+                            
+                            if ui.button("Browse...").clicked() {
+                                let tx = self.tx.clone();
+                                tokio::spawn(async move {
+                                    if let Some(file) = AsyncFileDialog::new()
+                                        .add_filter("Audio", &["mp3", "wav", "ogg"])
+                                        .pick_file()
+                                        .await 
+                                    {
+                                        let _ = tx.send((FileType::Strike, file.path().to_string_lossy().to_string()));
+                                    }
+                                });
+                            }
+                        });
+                        if let Some(path) = &self.config.strike_file_path {
+                            ui.label(format!("Selected: {}", path));
+                        }
 
-                    ui.horizontal(|ui| {
-                        let mut path_display = self.config.file_path.clone().unwrap_or_default();
-                        ui.text_edit_singleline(&mut path_display); // Read-only-ish display
-                        
-                        if ui.button("Browse...").clicked() {
-                            let tx = self.tx.clone();
-                            tokio::spawn(async move {
-                                if let Some(file) = AsyncFileDialog::new()
-                                    .add_filter("Audio", &["mp3", "wav", "ogg"])
-                                    .pick_file()
-                                    .await 
-                                {
-                                    let _ = tx.send((FileType::Main, file.path().to_string_lossy().to_string()));
-                                }
-                            });
+                        ui.add_space(10.0);
+                        if ui.button("Reset Defaults").clicked() {
+                            if let Ok((chime_path, prelude_path)) = config::ensure_assets() {
+                                self.config.prelude_file_path = Some(prelude_path.to_string_lossy().to_string());
+                                self.config.strike_file_path = Some(chime_path.to_string_lossy().to_string());
+                            }
+                            self.config.strike_interval_ms = 2000;
+                        }
+                    }
+                }
+
+                ui.add_space(20.0);
+
+                if ui.button("Test Sound").clicked() {
+                    let config_clone = self.config.clone();
+                    std::thread::spawn(move || {
+                        if let Err(e) = crate::audio::play_chime(&config_clone) {
+                            eprintln!("Error playing test sound: {}", e);
                         }
                     });
-                    if let Some(path) = &self.config.file_path {
-                        ui.label(format!("Selected: {}", path));
-                    }
                 }
-            }
 
-            ui.add_space(20.0);
+                ui.add_space(10.0);
 
-            if ui.button("Test Sound").clicked() {
-                let config_clone = self.config.clone();
-                std::thread::spawn(move || {
-                    if let Err(e) = crate::audio::play_chime(&config_clone) {
-                        eprintln!("Error playing test sound: {}", e);
+                ui.horizontal(|ui| {
+                    if ui.button("Save Settings").clicked() {
+                        match config::save_config(&self.config) {
+                            Ok(_) => {
+                                self.status_msg = Some("Settings saved successfully!".to_string());
+                                self.status_msg_time = Some(Instant::now());
+                            }
+                            Err(e) => {
+                                self.status_msg = Some(format!("Error saving: {}", e));
+                                self.status_msg_time = None;
+                            }
+                        }
+                    }
+
+                    if let Some(msg) = &self.status_msg {
+                        ui.label(msg);
                     }
                 });
-            }
+            }).response.rect;
 
-            ui.add_space(10.0);
-
-            if ui.button("Save Settings").clicked() {
-                match config::save_config(&self.config) {
-                    Ok(_) => self.status_msg = Some("Settings saved successfully!".to_string()),
-                    Err(e) => self.status_msg = Some(format!("Error saving: {}", e)),
+            // Clear status message if config changed or time elapsed
+            if self.config != prev_config {
+                self.status_msg = None;
+                self.status_msg_time = None;
+            } else if let Some(time) = self.status_msg_time {
+                if time.elapsed().as_secs_f32() > 3.0 {
+                    self.status_msg = None;
+                    self.status_msg_time = None;
+                    ctx.request_repaint();
+                } else {
+                    ctx.request_repaint();
                 }
             }
 
-            if let Some(msg) = &self.status_msg {
-                ui.add_space(10.0);
-                ui.label(msg);
+            // Auto-resize window if needed
+            if self.startup_frames > 0 || mode_changed {
+                let desired_size = content_rect.size() + egui::vec2(20.0, 20.0);
+                ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(desired_size));
+                if self.startup_frames > 0 {
+                    self.startup_frames -= 1;
+                }
+                ctx.request_repaint();
             }
         });
     }

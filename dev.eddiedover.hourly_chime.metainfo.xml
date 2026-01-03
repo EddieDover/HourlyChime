@@ -11,12 +11,19 @@
       It can play musical notes, audio files, or even simulate a grandfather clock with multiple chime files.
     </p>
   </description>
-  <developer_name>Your Name</developer_name>
+  <developer_name>Eddie Dover</developer_name>
+  
+  <!-- Add permission metadata -->
+  <requires>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </requires>
+  
   <url type="homepage">https://github.com/EddieDover/HourlyChime</url>
   <provides>
     <binary>hourly_chime</binary>
   </provides>
   <releases>
-    <release version="0.1.0" date="2025-01-02"/>
+    <release version="1.0.0" date="2025-01-02"/>
   </releases>
 </component>

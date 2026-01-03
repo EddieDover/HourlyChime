@@ -11,13 +11,21 @@ pub enum ChimeMode {
     GrandfatherClock,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     pub mode: ChimeMode,
     pub notes: String,
-    pub file_path: Option<String>,
+    pub note_speed: f32,
+    pub audio_file_path: Option<String>,
+    pub strike_file_path: Option<String>,
     pub prelude_file_path: Option<String>,
     pub strike_interval_ms: u64,
+    #[serde(default = "default_volume")]
+    pub volume: f32,
+}
+
+fn default_volume() -> f32 {
+    1.0
 }
 
 impl Default for Config {
@@ -25,9 +33,12 @@ impl Default for Config {
         Self {
             mode: ChimeMode::Notes,
             notes: "C E G C5".to_string(),
-            file_path: None,
+            note_speed: 1.0,
+            audio_file_path: None,
+            strike_file_path: None,
             prelude_file_path: None,
             strike_interval_ms: 2000,
+            volume: 1.0,
         }
     }
 }
@@ -46,6 +57,29 @@ pub fn get_config_dir() -> Result<PathBuf> {
 
 pub fn get_config_path() -> Result<PathBuf> {
     Ok(get_config_dir()?.join("config.json"))
+}
+
+const CHIME_MP3: &[u8] = include_bytes!("../assets/sounds/gc-chime.mp3");
+const PRELUDE_MP3: &[u8] = include_bytes!("../assets/sounds/gc-prelude.mp3");
+
+pub fn ensure_assets() -> Result<(PathBuf, PathBuf)> {
+    let config_dir = get_config_dir()?;
+    let sounds_dir = config_dir.join("sounds");
+    if !sounds_dir.exists() {
+        fs::create_dir_all(&sounds_dir)?;
+    }
+
+    let chime_path = sounds_dir.join("gc-chime.mp3");
+    if !chime_path.exists() {
+        fs::write(&chime_path, CHIME_MP3)?;
+    }
+
+    let prelude_path = sounds_dir.join("gc-prelude.mp3");
+    if !prelude_path.exists() {
+        fs::write(&prelude_path, PRELUDE_MP3)?;
+    }
+
+    Ok((chime_path, prelude_path))
 }
 
 pub fn load_config() -> Result<Config> {

@@ -48,7 +48,7 @@ Configuration is stored in your system's standard configuration directory (e.g.,
 - **Notes**: Enter a sequence of notes separated by spaces.
   - Supported notes: A-G, sharps (#), flats (b).
   - Octaves: Append a number (e.g., C4, A#5). Default is octave 4.
-  - Rests: Use `-` to hold the previous note longer, or `X` for silence.
+  - Rests: Use `-` to hold the previous note longer, or `Z` or `X` for silence.
 - **Audio File**: Select a single audio file to play on the hour.
 - **Grandfather Clock**:
   - **Prelude**: An optional file played once before the strikes.
