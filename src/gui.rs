@@ -139,7 +139,7 @@ impl eframe::App for SettingsApp {
                         ui.label("Notes (e.g., 'C E G C5'):");
                         ui.text_edit_singleline(&mut self.config.notes);
                         ui.small("Supported: A-G, #/b, Octave (e.g. C#5)");
-                        ui.small("Use '-' to hold previous note, 'X' for silence, '?' for random.");
+                        ui.small("Use '-' to hold previous note, 'Z'/'X' for silence, '?' for random.");
                         
                         ui.add_space(5.0);
                         ui.label("Playback Speed:");
