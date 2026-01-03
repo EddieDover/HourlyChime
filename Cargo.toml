@@ -34,6 +34,7 @@ ksni = { version = "0.3.3", features = ["blocking"] }
 
 [package.metadata.generate-rpm]
 vendor = "Eddie Dover <ed@eddiedover.dev>"
+packager = "Eddie Dover <ed@eddiedover.dev>"
 assets = [
     { source = "target/release/hourly_chime", dest = "/usr/bin/hourly_chime", mode = "755" },
     { source = "packaging/linux/hourly-chime.desktop", dest = "/usr/share/applications/hourly-chime.desktop", mode = "644" },

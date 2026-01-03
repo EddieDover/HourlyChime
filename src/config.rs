@@ -20,6 +20,12 @@ pub struct Config {
     pub strike_file_path: Option<String>,
     pub prelude_file_path: Option<String>,
     pub strike_interval_ms: u64,
+    #[serde(default = "default_volume")]
+    pub volume: f32,
+}
+
+fn default_volume() -> f32 {
+    1.0
 }
 
 impl Default for Config {
@@ -32,6 +38,7 @@ impl Default for Config {
             strike_file_path: None,
             prelude_file_path: None,
             strike_interval_ms: 2000,
+            volume: 1.0,
         }
     }
 }

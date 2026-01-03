@@ -12,6 +12,7 @@ use crate::config::{ChimeMode, Config};
 pub fn play_chime(config: &Config) -> Result<()> {
     let (_stream, stream_handle) = OutputStream::try_default()?;
     let sink = Sink::try_new(&stream_handle)?;
+    sink.set_volume(config.volume);
 
     match config.mode {
         ChimeMode::Notes => play_notes(&sink, config),
@@ -126,12 +127,14 @@ fn play_grandfather_clock(sink: &Sink, config: &Config) -> Result<()> {
         for i in 0..count {
             // We spawn a new thread for each strike to allow them to overlap naturally.
             let path_clone = path_str.clone();
+            let volume = config.volume;
             thread::spawn(move || {
                 if let Ok((_stream, stream_handle)) = OutputStream::try_default()
                     && let Ok(sink) = Sink::try_new(&stream_handle)
                     && let Ok(file) = File::open(path_clone)
                     && let Ok(source) = Decoder::new(BufReader::new(file))
                 {
+                    sink.set_volume(volume);
                     sink.append(source);
                     sink.sleep_until_end();
                 }

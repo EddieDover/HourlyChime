@@ -121,6 +121,11 @@ impl eframe::App for SettingsApp {
 
                 ui.add_space(10.0);
 
+                ui.label("Master Volume:");
+                ui.add(egui::Slider::new(&mut self.config.volume, 0.0..=1.0));
+
+                ui.add_space(10.0);
+
                 match self.config.mode {
                     ChimeMode::Notes => {
                         ui.label("Notes (e.g., 'C E G C5'):");
