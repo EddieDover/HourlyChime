@@ -117,17 +117,20 @@ impl eframe::App for SettingsApp {
                 ui.heading("Hourly Chime Settings");
                 ui.add_space(10.0);
 
-                ui.label("Chime Mode:");
-                ui.horizontal(|ui| {
-                    ui.radio_value(&mut self.config.mode, ChimeMode::Notes, "Notes");
-                    ui.radio_value(&mut self.config.mode, ChimeMode::File, "Audio File");
-                    ui.radio_value(&mut self.config.mode, ChimeMode::GrandfatherClock, "Grandfather Clock");
-                });
+                ui.label("Master Volume:");
+                ui.add(egui::Slider::new(&mut self.config.volume, 0.0..=1.0));
 
                 ui.add_space(10.0);
 
-                ui.label("Master Volume:");
-                ui.add(egui::Slider::new(&mut self.config.volume, 0.0..=1.0));
+                ui.label("Chime Mode:");
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut self.config.mode, ChimeMode::Notes, "Notes");
+                    ui.selectable_value(&mut self.config.mode, ChimeMode::File, "Audio File");
+                    ui.selectable_value(&mut self.config.mode, ChimeMode::GrandfatherClock, "Grandfather Clock");
+                });
+
+                ui.separator();
+                ui.add_space(10.0);
 
                 ui.add_space(10.0);
 
