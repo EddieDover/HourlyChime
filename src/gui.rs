@@ -1,6 +1,7 @@
 use eframe::egui;
 use rfd::AsyncFileDialog;
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::time::Instant;
 use crate::config::{self, ChimeMode, Config};
 
 pub fn run() -> eframe::Result<()> {
@@ -69,6 +70,7 @@ enum FileType {
 struct SettingsApp {
     config: Config,
     status_msg: Option<String>,
+    status_msg_time: Option<Instant>,
     rx: Receiver<(FileType, String)>,
     tx: Sender<(FileType, String)>,
     last_mode: Option<ChimeMode>,
@@ -82,6 +84,7 @@ impl SettingsApp {
         Self {
             config,
             status_msg: None,
+            status_msg_time: None,
             rx,
             tx,
             last_mode: None,
@@ -92,6 +95,8 @@ impl SettingsApp {
 
 impl eframe::App for SettingsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let prev_config = self.config.clone();
+
         // Check for file dialog results
         while let Ok((ftype, path)) = self.rx.try_recv() {
             match ftype {
@@ -248,18 +253,39 @@ impl eframe::App for SettingsApp {
 
                 ui.add_space(10.0);
 
-                if ui.button("Save Settings").clicked() {
-                    match config::save_config(&self.config) {
-                        Ok(_) => self.status_msg = Some("Settings saved successfully!".to_string()),
-                        Err(e) => self.status_msg = Some(format!("Error saving: {}", e)),
+                ui.horizontal(|ui| {
+                    if ui.button("Save Settings").clicked() {
+                        match config::save_config(&self.config) {
+                            Ok(_) => {
+                                self.status_msg = Some("Settings saved successfully!".to_string());
+                                self.status_msg_time = Some(Instant::now());
+                            }
+                            Err(e) => {
+                                self.status_msg = Some(format!("Error saving: {}", e));
+                                self.status_msg_time = None;
+                            }
+                        }
                     }
-                }
 
-                if let Some(msg) = &self.status_msg {
-                    ui.add_space(10.0);
-                    ui.label(msg);
-                }
+                    if let Some(msg) = &self.status_msg {
+                        ui.label(msg);
+                    }
+                });
             }).response.rect;
+
+            // Clear status message if config changed or time elapsed
+            if self.config != prev_config {
+                self.status_msg = None;
+                self.status_msg_time = None;
+            } else if let Some(time) = self.status_msg_time {
+                if time.elapsed().as_secs_f32() > 3.0 {
+                    self.status_msg = None;
+                    self.status_msg_time = None;
+                    ctx.request_repaint();
+                } else {
+                    ctx.request_repaint();
+                }
+            }
 
             // Auto-resize window if needed
             if self.startup_frames > 0 || mode_changed {

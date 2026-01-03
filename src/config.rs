@@ -11,7 +11,7 @@ pub enum ChimeMode {
     GrandfatherClock,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     pub mode: ChimeMode,
     pub notes: String,
