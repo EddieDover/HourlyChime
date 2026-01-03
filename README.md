@@ -15,22 +15,34 @@ A cross-platform system tray application that plays a sound on the hour.
 ### Linux (Fedora)
 You will need the following development packages:
 ```bash
-sudo dnf install libX11-devel libxdo-devel cairo-devel atk-devel cairo-gobject-devel gdk-pixbuf2-devel pango-devel gtk3-devel alsa-lib-devel
+sudo dnf install cmake gcc-c++ qt6-qtbase-devel qt6-qtmultimedia-devel mesa-libGL-devel
+```
+
+### Linux (Ubuntu/Debian)
+```bash
+sudo apt-get install cmake build-essential qt6-base-dev qt6-multimedia-dev libgl1-mesa-dev
 ```
 
 ## Building and Running
 
-To run the application in development mode:
+To build the application:
+
 ```bash
-cargo run
+mkdir build
+cd build
+cmake ..
+make
 ```
 
-To build a release binary:
+To run the application:
 ```bash
-cargo build --release
+./HourlyChime
 ```
 
-The binary will be located in `target/release/hourly_chime`.
+To create an RPM package (Linux):
+```bash
+cpack -G RPM
+```
 
 ## Usage
 
@@ -41,7 +53,7 @@ The binary will be located in `target/release/hourly_chime`.
 
 ## Configuration
 
-Configuration is stored in your system's standard configuration directory (e.g., `~/.config/HourlyChime/config.json` on Linux).
+Configuration is stored in your system's standard configuration directory (e.g., `~/.config/hourlychime/config.json` on Linux).
 
 ### Modes
 
