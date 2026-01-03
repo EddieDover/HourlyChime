@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="sounds/gc-chime.mp3">../assets/sounds/gc-chime.mp3</file>
+        <file alias="sounds/gc-prelude.mp3">../assets/sounds/gc-prelude.mp3</file>
+        <file alias="images/icon.png">../assets/images/icon.png</file>
+    </qresource>
+</RCC>
