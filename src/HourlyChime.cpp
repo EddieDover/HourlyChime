@@ -101,7 +101,7 @@ void HourlyChime::createTrayIcon()
 
 void HourlyChime::showAbout()
 {
-    QString versionStr = QString("v%1").arg(HOURLY_CHIME_VERSION_STR);
+    QString versionStr = QString("%1").arg(HOURLY_CHIME_VERSION_STR);
     QString dateStr = QString("Built on: %1").arg(HOURLY_CHIME_DATE_STR);
 
     QMessageBox::about(nullptr, tr("About Hourly Chime"), 
