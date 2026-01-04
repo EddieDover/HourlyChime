@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.16)
 
 project(HourlyChime VERSION 1.0.0 LANGUAGES CXX)
 
+# Version and Date configuration
+if(NOT DEFINED HOURLY_CHIME_VERSION)
+    set(HOURLY_CHIME_VERSION "${PROJECT_VERSION}")
+endif()
+
+if(NOT DEFINED HOURLY_CHIME_BUILD_DATE)
+    string(TIMESTAMP HOURLY_CHIME_BUILD_DATE "%Y-%m-%d")
+endif()
+
+add_compile_definitions(HOURLY_CHIME_VERSION_STR="${HOURLY_CHIME_VERSION}")
+add_compile_definitions(HOURLY_CHIME_DATE_STR="${HOURLY_CHIME_BUILD_DATE}")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTORCC ON)
@@ -57,7 +69,14 @@ install(FILES assets/images/icon.png DESTINATION share/pixmaps RENAME hourly-chi
 set(CPACK_PACKAGE_NAME "HourlyChime")
 set(CPACK_PACKAGE_VENDOR "Eddie Dover")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A simple hourly chime application")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+
+# Strip 'v' prefix if present for CPack version
+if(HOURLY_CHIME_VERSION MATCHES "^v")
+    string(SUBSTRING "${HOURLY_CHIME_VERSION}" 1 -1 CPACK_PACKAGE_VERSION)
+else()
+    set(CPACK_PACKAGE_VERSION "${HOURLY_CHIME_VERSION}")
+endif()
+
 set(CPACK_PACKAGE_CONTACT "Eddie Dover")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_RPM_PACKAGE_LICENSE "GPLv3")

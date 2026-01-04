@@ -19,7 +19,10 @@ jobs:
         sudo apt-get install -y qt6-base-dev qt6-multimedia-dev libgl1-mesa-dev rpm build-essential cmake
 
     - name: Configure CMake
-      run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release \
+          -DHOURLY_CHIME_VERSION="${{ github.ref_name }}" \
+          -DHOURLY_CHIME_BUILD_DATE="$(date +'%Y-%m-%d')"
 
     - name: Build
       run: cmake --build build

@@ -15,15 +15,21 @@ HourlyChime::HourlyChime(QObject *parent)
     , timer(new QTimer(this))
     , strikeTimer(new QTimer(this))
     , settingsDialog(nullptr)
-    , player(new QMediaPlayer(this))
-    , audioOutput(new QAudioOutput(this))
+    , preludePlayer(nullptr)
     , synthSink(nullptr)
     , synthGenerator(nullptr)
     , strikesLeft(0)
     , isPlayingPrelude(false)
 {
-    player->setAudioOutput(audioOutput);
-    connect(player, &QMediaPlayer::playbackStateChanged, this, &HourlyChime::onMediaPlayerStateChanged);
+    // Initialize Voice Pool (10 voices)
+    for (int i = 0; i < 10; ++i) {
+        auto* out = new QAudioOutput(this);
+        auto* pl = new QMediaPlayer(this);
+        pl->setAudioOutput(out);
+        connect(pl, &QMediaPlayer::playbackStateChanged, this, &HourlyChime::onMediaPlayerStateChanged);
+        voicePool.append(pl);
+        outputPool.append(out);
+    }
 
     strikeTimer->setSingleShot(true);
     connect(strikeTimer, &QTimer::timeout, this, &HourlyChime::playNextStrike);
@@ -95,9 +101,13 @@ void HourlyChime::createTrayIcon()
 
 void HourlyChime::showAbout()
 {
+    QString versionStr = QString("v%1").arg(HOURLY_CHIME_VERSION_STR);
+    QString dateStr = QString("Built on: %1").arg(HOURLY_CHIME_DATE_STR);
+
     QMessageBox::about(nullptr, tr("About Hourly Chime"), 
         tr("<h3>Hourly Chime</h3>"
-           "<p>v1.0.0</p>"
+           "<p>%1</p>"
+           "<p>%2</p>"
            "<p>Author: Eddie Dover</p>"
            "<p><a href='https://www.github.com/EddieDover/HourlyChime'>https://www.github.com/EddieDover/HourlyChime</a></p>"
            "<br>"
@@ -105,7 +115,7 @@ void HourlyChime::showAbout()
            "<p><b>Images:</b><br>"
            "Grandfather Clock Icon - Iconic Panda - Flaticon</p>"
            "<p><b>Sounds:</b><br>"
-           "Default Prelude and Chime - Grandfather clock strikes ten - Pixabay</p>"));
+           "Default Prelude and Chime - Grandfather clock strikes ten - Pixabay</p>").arg(versionStr, dateStr));
 }
 
 void HourlyChime::iconActivated(QSystemTrayIcon::ActivationReason reason)
@@ -132,7 +142,9 @@ void HourlyChime::showSettings()
 void HourlyChime::reloadConfig()
 {
     currentConfig = Config::load();
-    audioOutput->setVolume(currentConfig.volume);
+    for (auto* out : outputPool) {
+        out->setVolume(currentConfig.volume);
+    }
 }
 
 void HourlyChime::checkTime()
@@ -168,7 +180,9 @@ void HourlyChime::playChime()
 
 void HourlyChime::testSound(const Config::AppConfig &config)
 {
-    audioOutput->setVolume(config.volume);
+    for (auto* out : outputPool) {
+        out->setVolume(config.volume);
+    }
 
     if (config.mode == "File") {
         if (!config.audioFilePath.isEmpty()) {
@@ -186,16 +200,63 @@ void HourlyChime::testSound(const Config::AppConfig &config)
 void HourlyChime::playNotes(const QString &notes, float speed, float volume)
 {
     qDebug() << "Playing notes:" << notes << "Speed:" << speed << "Volume:" << volume;
-    synthSink->stop();
+    
+    if (synthSink) {
+        synthSink->stop();
+        delete synthSink;
+    }
+
+    QAudioFormat format;
+    format.setSampleRate(44100);
+    format.setChannelCount(2);
+    format.setSampleFormat(QAudioFormat::Int16);
+    
+    synthSink = new QAudioSink(QMediaDevices::defaultAudioOutput(), format, this);
+    synthSink->setVolume(1.0f);
+    
+    connect(synthSink, &QAudioSink::stateChanged, this, [this](QAudio::State state){
+        if (state == QAudio::IdleState) {
+            emit testFinished();
+        } else if (state == QAudio::StoppedState) {
+            if (this->synthSink->error() != QAudio::NoError) {
+                 qWarning() << "AudioSink error:" << this->synthSink->error();
+            }
+            emit testFinished();
+        }
+    });
+
     synthGenerator->setSequence(notes, speed, volume);
     synthGenerator->start();
     synthSink->start(synthGenerator);
 }
 
+QMediaPlayer* HourlyChime::getFreePlayer()
+{
+    for (auto* p : voicePool) {
+        if (p->playbackState() == QMediaPlayer::StoppedState) {
+            return p;
+        }
+    }
+    // If all busy, steal the first one (oldest playing usually)
+    if (!voicePool.isEmpty()) {
+        voicePool.first()->stop();
+        return voicePool.first();
+    }
+    return nullptr;
+}
+
 void HourlyChime::playFile(const QString &path)
 {
-    player->setSource(QUrl::fromLocalFile(path));
-    player->play();
+    QMediaPlayer* p = getFreePlayer();
+    if (!p) return;
+
+    if (isPlayingPrelude) {
+        preludePlayer = p;
+    }
+
+    p->audioOutput()->setDevice(QMediaDevices::defaultAudioOutput());
+    p->setSource(QUrl::fromLocalFile(path));
+    p->play();
 }
 
 void HourlyChime::playGrandfatherSequence()
@@ -207,6 +268,7 @@ void HourlyChime::playGrandfatherSequence()
 
     strikesLeft = hour;
     isPlayingPrelude = true;
+    preludePlayer = nullptr;
 
     if (!currentConfig.preludeFilePath.isEmpty()) {
         playFile(currentConfig.preludeFilePath);
@@ -220,8 +282,11 @@ void HourlyChime::stopTest()
 {
     strikesLeft = 0;
     isPlayingPrelude = false;
+    preludePlayer = nullptr;
     strikeTimer->stop();
-    player->stop();
+    for (auto* p : voicePool) {
+        p->stop();
+    }
     if (synthSink) synthSink->stop();
     emit testFinished();
 }
@@ -230,18 +295,44 @@ void HourlyChime::onMediaPlayerStateChanged(QMediaPlayer::PlaybackState state)
 {
     if (state == QMediaPlayer::StoppedState) {
         if (currentConfig.mode == "GrandfatherClock") {
-            if (isPlayingPrelude) {
+            if (isPlayingPrelude && sender() == preludePlayer) {
                 isPlayingPrelude = false;
+                preludePlayer = nullptr;
                 playNextStrike();
-            } else if (strikesLeft > 1) {
-                strikesLeft--;
-                strikeTimer->start(currentConfig.strikeIntervalMs);
-            } else {
-                strikesLeft = 0;
+                return;
+            }
+
+            // If interval is disabled (-1), play next strike when current one finishes
+            if (currentConfig.strikeIntervalMs == -1 && !isPlayingPrelude) {
+                if (strikesLeft > 0) {
+                    playNextStrike();
+                    return;
+                }
+            }
+            
+            
+            bool anyPlaying = false;
+            for (auto* p : voicePool) {
+                if (p->playbackState() != QMediaPlayer::StoppedState) {
+                    anyPlaying = true;
+                    break;
+                }
+            }
+            
+            if (!anyPlaying && strikesLeft == 0 && !isPlayingPrelude) {
                 emit testFinished();
             }
         } else {
-            emit testFinished();
+            bool anyPlaying = false;
+            for (auto* p : voicePool) {
+                if (p->playbackState() != QMediaPlayer::StoppedState) {
+                    anyPlaying = true;
+                    break;
+                }
+            }
+            if (!anyPlaying) {
+                emit testFinished();
+            }
         }
     }
 }
@@ -250,5 +341,16 @@ void HourlyChime::playNextStrike()
 {
     if (!currentConfig.strikeFilePath.isEmpty()) {
         playFile(currentConfig.strikeFilePath);
+    }
+
+    if (currentConfig.strikeIntervalMs >= 0) {
+        if (strikesLeft > 1) {
+            strikesLeft--;
+            strikeTimer->start(currentConfig.strikeIntervalMs);
+        } else {
+            strikesLeft = 0;
+        }
+    } else {
+        if (strikesLeft > 0) strikesLeft--;
     }
 }
