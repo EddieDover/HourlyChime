@@ -101,9 +101,13 @@ void HourlyChime::createTrayIcon()
 
 void HourlyChime::showAbout()
 {
+    QString versionStr = QString("v%1").arg(HOURLY_CHIME_VERSION_STR);
+    QString dateStr = QString("Built on: %1").arg(HOURLY_CHIME_DATE_STR);
+
     QMessageBox::about(nullptr, tr("About Hourly Chime"), 
         tr("<h3>Hourly Chime</h3>"
-           "<p>v1.0.0</p>"
+           "<p>%1</p>"
+           "<p>%2</p>"
            "<p>Author: Eddie Dover</p>"
            "<p><a href='https://www.github.com/EddieDover/HourlyChime'>https://www.github.com/EddieDover/HourlyChime</a></p>"
            "<br>"
@@ -111,7 +115,7 @@ void HourlyChime::showAbout()
            "<p><b>Images:</b><br>"
            "Grandfather Clock Icon - Iconic Panda - Flaticon</p>"
            "<p><b>Sounds:</b><br>"
-           "Default Prelude and Chime - Grandfather clock strikes ten - Pixabay</p>"));
+           "Default Prelude and Chime - Grandfather clock strikes ten - Pixabay</p>").arg(versionStr, dateStr));
 }
 
 void HourlyChime::iconActivated(QSystemTrayIcon::ActivationReason reason)
