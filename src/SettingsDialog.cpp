@@ -61,7 +61,8 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     fileLayout->addWidget(browsePreludeBtn, 2, 2);
 
     strikeIntervalSpin = new QSpinBox(this);
-    strikeIntervalSpin->setRange(0, 10000);
+    strikeIntervalSpin->setRange(-1, 10000);
+    strikeIntervalSpin->setSpecialValueText(tr("Disabled"));
     strikeIntervalSpin->setSuffix(" ms");
     fileLayout->addWidget(new QLabel(tr("Strike Interval:")), 3, 0);
     fileLayout->addWidget(strikeIntervalSpin, 3, 1);

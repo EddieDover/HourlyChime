@@ -57,8 +57,10 @@ private:
     SettingsDialog *settingsDialog;
 
     // Audio
-    QMediaPlayer *player;
-    QAudioOutput *audioOutput;
+    QList<QMediaPlayer*> voicePool;
+    QList<QAudioOutput*> outputPool;
+    QMediaPlayer* getFreePlayer();
+    QMediaPlayer* preludePlayer;
     
     // Synth
     QAudioSink *synthSink;
