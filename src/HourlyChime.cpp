@@ -7,11 +7,16 @@
 #include <QMediaDevices>
 #include <QAudioDevice>
 #include <QMessageBox>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QDesktopServices>
+#include <iostream>
 
 HourlyChime::HourlyChime(QObject *parent)
     : QObject(parent)
     , trayIcon(nullptr)
     , trayIconMenu(nullptr)
+    , updateAction(nullptr)
     , timer(new QTimer(this))
     , strikeTimer(new QTimer(this))
     , settingsDialog(nullptr)
@@ -20,6 +25,7 @@ HourlyChime::HourlyChime(QObject *parent)
     , synthGenerator(nullptr)
     , strikesLeft(0)
     , isPlayingPrelude(false)
+    , networkManager(new QNetworkAccessManager(this))
 {
     // Initialize Voice Pool (10 voices)
     for (int i = 0; i < 10; ++i) {
@@ -60,6 +66,9 @@ HourlyChime::HourlyChime(QObject *parent)
     connect(timer, &QTimer::timeout, this, &HourlyChime::checkTime);
     timer->start(1000);
 
+    connect(networkManager, &QNetworkAccessManager::finished, this, &HourlyChime::onUpdateCheckFinished);
+    checkForUpdates();
+
     reloadConfig();
 }
 
@@ -72,6 +81,11 @@ void HourlyChime::createTrayIcon()
 {
     trayIconMenu = new QMenu();
     
+    updateAction = new QAction(tr("Update Available!"), this);
+    updateAction->setVisible(false);
+    connect(updateAction, &QAction::triggered, this, &HourlyChime::openUpdateUrl);
+    trayIconMenu->addAction(updateAction);
+
     QAction *settingsAction = new QAction(tr("Settings"), this);
     connect(settingsAction, &QAction::triggered, this, &HourlyChime::showSettings);
     trayIconMenu->addAction(settingsAction);
@@ -103,11 +117,18 @@ void HourlyChime::showAbout()
 {
     QString versionStr = QString("%1").arg(HOURLY_CHIME_VERSION_STR);
     QString dateStr = QString("Built on: %1").arg(HOURLY_CHIME_DATE_STR);
+    
+    QString updateMsg;
+    if (!latestVersionStr.isEmpty() && latestVersionStr != versionStr) {
+        updateMsg = QString("<p><b>Update Available: %1</b><br><a href='%2'>Download Update</a></p>")
+                        .arg(latestVersionStr, latestVersionUrl);
+    }
 
     QMessageBox::about(nullptr, tr("About Hourly Chime"), 
         tr("<h3>Hourly Chime</h3>"
            "<p>%1</p>"
            "<p>%2</p>"
+           "%3"
            "<p>Author: Eddie Dover</p>"
            "<p><a href='https://www.github.com/EddieDover/HourlyChime'>https://www.github.com/EddieDover/HourlyChime</a></p>"
            "<br>"
@@ -115,7 +136,52 @@ void HourlyChime::showAbout()
            "<p><b>Images:</b><br>"
            "Grandfather Clock Icon - Iconic Panda - Flaticon</p>"
            "<p><b>Sounds:</b><br>"
-           "Default Prelude and Chime - Grandfather clock strikes ten - Pixabay</p>").arg(versionStr, dateStr));
+           "Default Prelude and Chime - Grandfather clock strikes ten - Pixabay</p>").arg(versionStr, dateStr, updateMsg));
+}
+
+void HourlyChime::checkForUpdates()
+{
+    QNetworkRequest request(QUrl("https://api.github.com/repos/EddieDover/HourlyChime/releases/latest"));
+    request.setHeader(QNetworkRequest::UserAgentHeader, "HourlyChime-App");
+    networkManager->get(request);
+}
+
+void HourlyChime::onUpdateCheckFinished(QNetworkReply *reply)
+{
+    if (reply->error() == QNetworkReply::NoError) {
+        QByteArray data = reply->readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        QJsonObject obj = doc.object();
+        
+        QString tagName = obj["tag_name"].toString();
+        // Remove 'v' prefix if present
+        if (tagName.startsWith("v")) {
+            tagName = tagName.mid(1);
+        }
+        
+        QString currentVersion = QString(HOURLY_CHIME_VERSION_STR);
+        if (currentVersion.startsWith("v")) {
+            currentVersion = currentVersion.mid(1);
+        }
+
+        if (tagName != currentVersion && !tagName.isEmpty()) {
+            latestVersionStr = tagName;
+            latestVersionUrl = obj["html_url"].toString();
+            
+            if (updateAction) {
+                updateAction->setText(tr("Update Available (%1)").arg(latestVersionStr));
+                updateAction->setVisible(true);
+            }
+        }
+    }
+    reply->deleteLater();
+}
+
+void HourlyChime::openUpdateUrl()
+{
+    if (!latestVersionUrl.isEmpty()) {
+        QDesktopServices::openUrl(QUrl(latestVersionUrl));
+    }
 }
 
 void HourlyChime::iconActivated(QSystemTrayIcon::ActivationReason reason)
@@ -194,8 +260,6 @@ void HourlyChime::testSound(const Config::AppConfig &config)
         playNotes(config.notes, config.noteSpeed, config.volume);
     }
 }
-
-#include <iostream>
 
 void HourlyChime::playNotes(const QString &notes, float speed, float volume)
 {

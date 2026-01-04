@@ -10,6 +10,8 @@
 #include <QSettings>
 #include <QDateTime>
 #include <QAudioSink>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include "Config.h"
 #include "SynthGenerator.h"
 
@@ -39,6 +41,9 @@ private slots:
     void iconActivated(QSystemTrayIcon::ActivationReason reason);
     void reloadConfig();
     void showAbout();
+    void checkForUpdates();
+    void onUpdateCheckFinished(QNetworkReply *reply);
+    void openUpdateUrl();
 
 private:
     void createTrayIcon();
@@ -49,12 +54,17 @@ private:
     void playNextStrike();
     void playNotes(const QString &notes, float speed, float volume);
     
-    // State
     QSystemTrayIcon *trayIcon;
     QMenu *trayIconMenu;
+    QAction *updateAction;
     QTimer *timer;
     QTimer *strikeTimer;
     SettingsDialog *settingsDialog;
+
+    // Network
+    QNetworkAccessManager *networkManager;
+    QString latestVersionUrl;
+    QString latestVersionStr;
 
     // Audio
     QList<QMediaPlayer*> voicePool;
