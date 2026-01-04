@@ -18,7 +18,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Multimedia)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Multimedia Network)
 
 set(PROJECT_SOURCES
     src/main.cpp
@@ -49,6 +49,7 @@ target_link_libraries(HourlyChime PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Multimedia
+    Qt6::Network
 )
 
 qt_finalize_executable(HourlyChime)
