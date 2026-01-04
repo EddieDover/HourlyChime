@@ -80,7 +80,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     testBtn = new QPushButton(tr("Test Sound"), this);
     QPushButton *resetBtn = new QPushButton(tr("Reset Defaults"), this);
     QPushButton *saveBtn = new QPushButton(tr("Save"), this);
-    QPushButton *cancelBtn = new QPushButton(tr("Cancel"), this);
+    QPushButton *cancelBtn = new QPushButton(tr("Close"), this);
     btnLayout->addWidget(testBtn);
     btnLayout->addWidget(resetBtn);
     btnLayout->addStretch();
@@ -147,7 +147,6 @@ void SettingsDialog::saveSettings()
     Config::save(cfg);
     
     emit configChanged();
-    accept();
 }
 
 void SettingsDialog::resetDefaults()
