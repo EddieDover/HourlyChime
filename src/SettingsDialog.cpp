@@ -26,37 +26,61 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     modeCombo->addItem("Notes", "Notes");
     modeCombo->addItem("Single File", "File");
     modeCombo->addItem("Grandfather Clock", "GrandfatherClock");
+    modeCombo->setToolTip(tr("Select the operation mode:\n- Notes: Play synthesized notes.\n- Single File: Play a single audio file.\n- Grandfather Clock: Play a prelude followed by hourly strikes."));
     modeLayout->addWidget(modeCombo);
     mainLayout->addWidget(modeGroup);
 
     QGroupBox *notesGroup = new QGroupBox(tr("Notes Configuration"), this);
     QFormLayout *notesLayout = new QFormLayout(notesGroup);
     notesEdit = new QLineEdit(this);
+    notesEdit->setToolTip(tr("Enter a sequence of notes separated by spaces (e.g., 'C E G C5').\n"
+                             "Supports sharps (#) and flats (b).\n"
+                             "Special notes: Z/X (rest), ? (random), - (sustain)."));
+
     noteSpeedSpin = new QDoubleSpinBox(this);
     noteSpeedSpin->setRange(0.1, 5.0);
     noteSpeedSpin->setSingleStep(0.1);
-    notesLayout->addRow(tr("Notes:"), notesEdit);
-    notesLayout->addRow(tr("Speed:"), noteSpeedSpin);
+    noteSpeedSpin->setToolTip(tr("Adjust the playback speed of the notes."));
+
+    QLabel *notesLabel = new QLabel(tr("Notes:"));
+    notesLabel->setToolTip(notesEdit->toolTip());
+    notesLayout->addRow(notesLabel, notesEdit);
+
+    QLabel *speedLabel = new QLabel(tr("Speed:"));
+    speedLabel->setToolTip(noteSpeedSpin->toolTip());
+    notesLayout->addRow(speedLabel, noteSpeedSpin);
     mainLayout->addWidget(notesGroup);
 
     QGroupBox *fileGroup = new QGroupBox(tr("File Configuration"), this);
     QGridLayout *fileLayout = new QGridLayout(fileGroup);
     
     audioFileEdit = new QLineEdit(this);
+    audioFileEdit->setToolTip(tr("The audio file to play in 'Single File' mode."));
     browseAudioBtn = new QPushButton(tr("Browse..."), this);
-    fileLayout->addWidget(new QLabel(tr("Audio File:")), 0, 0);
+    
+    QLabel *audioLabel = new QLabel(tr("Audio File:"));
+    audioLabel->setToolTip(audioFileEdit->toolTip());
+    fileLayout->addWidget(audioLabel, 0, 0);
     fileLayout->addWidget(audioFileEdit, 0, 1);
     fileLayout->addWidget(browseAudioBtn, 0, 2);
 
     strikeFileEdit = new QLineEdit(this);
+    strikeFileEdit->setToolTip(tr("The sound file for a single clock strike (used in Grandfather Clock mode)."));
     browseStrikeBtn = new QPushButton(tr("Browse..."), this);
-    fileLayout->addWidget(new QLabel(tr("Strike File:")), 1, 0);
+    
+    QLabel *strikeLabel = new QLabel(tr("Strike File:"));
+    strikeLabel->setToolTip(strikeFileEdit->toolTip());
+    fileLayout->addWidget(strikeLabel, 1, 0);
     fileLayout->addWidget(strikeFileEdit, 1, 1);
     fileLayout->addWidget(browseStrikeBtn, 1, 2);
 
     preludeFileEdit = new QLineEdit(this);
+    preludeFileEdit->setToolTip(tr("Optional sound file to play before the strikes begin (used in Grandfather Clock mode)."));
     browsePreludeBtn = new QPushButton(tr("Browse..."), this);
-    fileLayout->addWidget(new QLabel(tr("Prelude File:")), 2, 0);
+    
+    QLabel *preludeLabel = new QLabel(tr("Prelude File:"));
+    preludeLabel->setToolTip(preludeFileEdit->toolTip());
+    fileLayout->addWidget(preludeLabel, 2, 0);
     fileLayout->addWidget(preludeFileEdit, 2, 1);
     fileLayout->addWidget(browsePreludeBtn, 2, 2);
 
@@ -64,7 +88,11 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     strikeIntervalSpin->setRange(-1, 10000);
     strikeIntervalSpin->setSpecialValueText(tr("Disabled"));
     strikeIntervalSpin->setSuffix(" ms");
-    fileLayout->addWidget(new QLabel(tr("Strike Interval:")), 3, 0);
+    strikeIntervalSpin->setToolTip(tr("Time in milliseconds between the start of each strike.\nSet to 'Disabled' (-1) to wait for the previous strike to finish."));
+    
+    QLabel *intervalLabel = new QLabel(tr("Strike Interval:"));
+    intervalLabel->setToolTip(strikeIntervalSpin->toolTip());
+    fileLayout->addWidget(intervalLabel, 3, 0);
     fileLayout->addWidget(strikeIntervalSpin, 3, 1);
 
     mainLayout->addWidget(fileGroup);
@@ -74,7 +102,11 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     volumeSpin = new QDoubleSpinBox(this);
     volumeSpin->setRange(0.0, 1.0);
     volumeSpin->setSingleStep(0.1);
-    generalLayout->addRow(tr("Volume:"), volumeSpin);
+    volumeSpin->setToolTip(tr("Master volume for the chime (0.0 to 1.0)."));
+    
+    QLabel *volumeLabel = new QLabel(tr("Volume:"));
+    volumeLabel->setToolTip(volumeSpin->toolTip());
+    generalLayout->addRow(volumeLabel, volumeSpin);
     mainLayout->addWidget(generalGroup);
 
     QHBoxLayout *btnLayout = new QHBoxLayout();
