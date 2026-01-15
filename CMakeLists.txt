@@ -63,8 +63,20 @@ install(TARGETS HourlyChime
     RUNTIME DESTINATION bin
 )
 
-install(FILES packaging/linux/hourly-chime.desktop DESTINATION share/applications)
-install(FILES assets/images/icon.png DESTINATION share/pixmaps RENAME hourly-chime.png)
+if(WIN32)
+    set_target_properties(HourlyChime PROPERTIES WIN32_EXECUTABLE ON)
+    qt_generate_deploy_app_script(
+        TARGET HourlyChime
+        OUTPUT_SCRIPT deploy_script
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
+    install(SCRIPT ${deploy_script})
+endif()
+
+if(UNIX AND NOT APPLE)
+    install(FILES packaging/linux/hourly-chime.desktop DESTINATION share/applications)
+    install(FILES assets/images/icon.png DESTINATION share/pixmaps RENAME hourly-chime.png)
+endif()
 
 
 set(CPACK_PACKAGE_NAME "HourlyChime")
@@ -80,8 +92,15 @@ endif()
 
 set(CPACK_PACKAGE_CONTACT "Eddie Dover")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_RPM_PACKAGE_LICENSE "GPLv3")
-set(CPACK_RPM_PACKAGE_GROUP "Amusements/Sound")
-set(CPACK_GENERATOR "RPM")
+
+if(WIN32)
+    set(CPACK_GENERATOR "NSIS")
+    set(CPACK_NSIS_MODIFY_PATH ON)
+    set(CPACK_NSIS_DISPLAY_NAME "HourlyChime")
+else()
+    set(CPACK_RPM_PACKAGE_LICENSE "GPLv3")
+    set(CPACK_RPM_PACKAGE_GROUP "Amusements/Sound")
+    set(CPACK_GENERATOR "RPM")
+endif()
 
 include(CPack)
