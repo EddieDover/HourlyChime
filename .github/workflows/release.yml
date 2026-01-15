@@ -53,6 +53,9 @@ jobs:
         arch: 'win64_msvc2019_64'
         modules: 'qtmultimedia'
 
+    - name: Install NSIS
+      run: choco install nsis
+
     - name: Configure CMake
       run: |
         cmake -B build -DCMAKE_BUILD_TYPE=Release `
